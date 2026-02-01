@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Mail, Lock, Loader2 } from 'lucide-react';
+import { X, User, Lock, Loader2 } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 
 interface AuthModalProps {
@@ -12,9 +12,8 @@ interface AuthModalProps {
 export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -29,21 +28,22 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
     try {
       if (mode === 'signin') {
-        const { error } = await signIn(email, password, rememberMe);
+        const { error } = await signIn(username, password);
         if (error) {
           setError(error.message);
         } else {
           onClose();
         }
       } else {
-        const { error } = await signUp(email, password);
+        const { error } = await signUp(username, password);
         if (error) {
           setError(error.message);
         } else {
-          setSuccess('Account created successfully!');
+          setSuccess('Account created! You are now signed in.');
+          setTimeout(() => onClose(), 1000);
         }
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -68,11 +68,11 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </button>
         </div>
 
-        {/* Form */}
+        {/* Info */}
         <div className="px-4 pb-4">
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800 font-medium">Stay signed in for up to 365 days</p>
-            <p className="text-xs text-blue-600 mt-1">Your progress will be automatically saved and synced.</p>
+            <p className="text-sm text-blue-800 font-medium">Local account</p>
+            <p className="text-xs text-blue-600 mt-1">Your data is saved locally on this device.</p>
           </div>
         </div>
 
@@ -91,17 +91,18 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 ">
-              Email
+              Username
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
+                minLength={3}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 text-black"
-                placeholder="you@example.com"
+                placeholder="yourname"
               />
             </div>
           </div>
@@ -117,27 +118,12 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={8}
+                minLength={4}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 text-black"
                 placeholder="••••••••"
               />
             </div>
           </div>
-
-          {mode === 'signin' && (
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                Stay signed in for 365 days
-              </label>
-            </div>
-          )}
 
           <button
             type="submit"
@@ -163,13 +149,6 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             >
               {mode === 'signin' ? 'Sign Up' : 'Sign In'}
             </button>
-          </p>
-        </div>
-
-        {/* Note about authentication */}
-        <div className="px-4 pb-4">
-          <p className="text-xs text-gray-400 text-center">
-            Your data is securely stored and synced across devices
           </p>
         </div>
       </div>

@@ -1,90 +1,162 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/lib/supabase/client';
+import { DEFAULT_CATEGORIES } from '@/types';
+
+interface LocalUser {
+  id: string;
+  username: string;
+}
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: LocalUser | null;
   loading: boolean;
-  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (username: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (username: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTH_STORAGE_KEY = 'everyhour-auth';
+
+// Simple hash function for password (not cryptographically secure, but fine for personal use)
+function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return hash.toString(36);
+}
+
+function getCurrentUser(): LocalUser | null {
+  if (typeof window === 'undefined') return null;
+  const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+  return stored ? JSON.parse(stored) : null;
+}
+
+function saveCurrentUser(user: LocalUser | null): void {
+  if (user) {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<LocalUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const supabase = getSupabaseClient();
-
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-
-      // If user has "remember me" enabled and has a valid session, extend it
-      if (session && localStorage.getItem('rememberMe') === 'true') {
-        // The session will auto-refresh due to our client config
-        console.log('Remembered session active - will stay logged in longer');
-      }
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
+    // Load user from localStorage on mount
+    const storedUser = getCurrentUser();
+    setUser(storedUser);
+    setLoading(false);
   }, []);
 
-  const signIn = async (email: string, password: string, rememberMe = false) => {
-    const supabase = getSupabaseClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  const signIn = async (username: string, password: string) => {
+    try {
+      const supabase = getSupabaseClient();
+      const passwordHash = simpleHash(password);
 
-    // If remember me is enabled, store a flag in localStorage
-    if (rememberMe && !error) {
-      localStorage.setItem('rememberMe', 'true');
+      // Query users table
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, username')
+        .eq('username', username.toLowerCase())
+        .eq('password_hash', passwordHash)
+        .single();
+
+      if (error || !data) {
+        return { error: new Error('Invalid username or password') };
+      }
+
+      const localUser: LocalUser = {
+        id: data.id,
+        username: data.username,
+      };
+
+      saveCurrentUser(localUser);
+      setUser(localUser);
+      return { error: null };
+    } catch {
+      return { error: new Error('Failed to sign in. Please try again.') };
     }
-
-    return { error: error as Error | null };
   };
 
-  const signUp = async (email: string, password: string) => {
-    const supabase = getSupabaseClient();
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          email_confirm: false,
-        },
-      },
-    });
-    return { error: error as Error | null };
+  const signUp = async (username: string, password: string) => {
+    try {
+      const supabase = getSupabaseClient();
+      const passwordHash = simpleHash(password);
+      const lowerUsername = username.toLowerCase();
+
+      // Check if username exists
+      const { data: existing } = await supabase
+        .from('users')
+        .select('id')
+        .eq('username', lowerUsername)
+        .single();
+
+      if (existing) {
+        return { error: new Error('Username already exists') };
+      }
+
+      // Create user
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert({
+          username: lowerUsername,
+          display_name: username,
+          password_hash: passwordHash,
+        })
+        .select('id, username')
+        .single();
+
+      if (createError || !newUser) {
+        console.error('Create user error:', createError);
+        return { error: new Error('Failed to create account') };
+      }
+
+      // Create default categories for the new user
+      const defaultCategories = DEFAULT_CATEGORIES.map((cat, index) => ({
+        user_id: newUser.id,
+        name: cat.name,
+        shorthand: cat.shorthand,
+        numeric_id: cat.numeric_id,
+        color: cat.color,
+        icon: cat.icon,
+        is_productive: cat.is_productive,
+        is_quick_action: cat.is_quick_action,
+        sort_order: index,
+      }));
+
+      await supabase.from('categories').insert(defaultCategories);
+
+      // Auto sign in
+      const localUser: LocalUser = {
+        id: newUser.id,
+        username: newUser.username,
+      };
+      saveCurrentUser(localUser);
+      setUser(localUser);
+
+      return { error: null };
+    } catch (err) {
+      console.error('Signup error:', err);
+      return { error: new Error('Failed to create account. Please try again.') };
+    }
   };
 
   const signOut = async () => {
-    const supabase = getSupabaseClient();
-    localStorage.removeItem('rememberMe');
-    await supabase.auth.signOut();
+    saveCurrentUser(null);
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

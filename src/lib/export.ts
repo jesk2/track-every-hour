@@ -15,7 +15,7 @@ export interface ExportData {
   updated_at: string;
 }
 
-export async function exportUserData(format: 'csv' | 'json' | 'xlsx'): Promise<void> {
+export async function exportUserData(format: 'csv' | 'json' | 'xlsx', userId: string): Promise<void> {
   try {
     const supabase = getSupabaseClient();
 
@@ -37,13 +37,14 @@ export async function exportUserData(format: 'csv' | 'json' | 'xlsx'): Promise<v
           shorthand
         )
       `)
+      .eq('user_id', userId)
       .order('date', { ascending: true })
       .order('hour', { ascending: true });
 
     if (error) throw error;
 
     // Transform data for export
-    const exportData: ExportData[] = entries.map((entry: any) => ({
+    const exportData: ExportData[] = (entries || []).map((entry: any) => ({
       id: entry.id,
       date: entry.date,
       hour: entry.hour,

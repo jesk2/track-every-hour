@@ -3,16 +3,16 @@
 import { useEffect, useCallback } from 'react';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { useAppStore } from '@/stores/useAppStore';
+import { useAuth } from '@/components/AuthProvider';
 import { formatDateKey } from '@/lib/date';
 import type { Category, TimeEntry } from '@/types';
 
 /**
- * Hook to sync data with Supabase
- * Call this in your root layout or page to enable real-time sync
+ * Hook to sync data with Supabase using custom auth
  */
 export function useSupabaseSync() {
+  const { user } = useAuth();
   const {
-    userId,
     setUserId,
     setCategories,
     setEntriesForDate,
@@ -22,52 +22,38 @@ export function useSupabaseSync() {
     setLoading,
   } = useAppStore();
 
-  // Check auth and load user data
+  // Update store userId when auth changes
   useEffect(() => {
-    const supabase = getSupabaseClient();
+    if (user) {
+      setUserId(user.id);
+    } else {
+      setUserId(null);
+    }
+  }, [user, setUserId]);
 
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        await loadCategories(user.id);
+  // Load categories when user changes
+  useEffect(() => {
+    if (!user) return;
+
+    const loadCategories = async () => {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('sort_order');
+
+      if (!error && data) {
+        setCategories(data as Category[]);
       }
     };
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          setUserId(session.user.id);
-          await loadCategories(session.user.id);
-        } else {
-          setUserId(null);
-        }
-      }
-    );
+    loadCategories();
+  }, [user, setCategories]);
 
-    checkAuth();
-
-    return () => subscription.unsubscribe();
-  }, [setUserId, setCategories]);
-
-  // Load categories for user
-  const loadCategories = useCallback(async (uid: string) => {
-    const supabase = getSupabaseClient();
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('user_id', uid)
-      .order('sort_order');
-
-    if (!error && data) {
-      setCategories(data as Category[]);
-    }
-  }, [setCategories]);
-
-  // Load entries when date changes
+  // Load entries when date or user changes
   useEffect(() => {
-    if (!userId) return;
+    if (!user) return;
 
     const loadEntries = async () => {
       setLoading(true);
@@ -77,7 +63,7 @@ export function useSupabaseSync() {
       const { data, error } = await supabase
         .from('time_entries')
         .select('*, category:categories(*)')
-        .eq('user_id', userId)
+        .eq('user_id', user.id)
         .eq('date', dateKey);
 
       if (!error && data) {
@@ -87,11 +73,11 @@ export function useSupabaseSync() {
     };
 
     loadEntries();
-  }, [userId, selectedDate, setEntriesForDate, setLoading]);
+  }, [user, selectedDate, setEntriesForDate, setLoading]);
 
   // Real-time subscription for entries
   useEffect(() => {
-    if (!userId) return;
+    if (!user) return;
 
     const supabase = getSupabaseClient();
     const dateKey = formatDateKey(selectedDate);
@@ -104,17 +90,17 @@ export function useSupabaseSync() {
           event: '*',
           schema: 'public',
           table: 'time_entries',
-          filter: `user_id=eq.${userId}`,
+          filter: `user_id=eq.${user.id}`,
         },
-        (payload) => {
+        (payload: { eventType: string; new: Record<string, unknown>; old: Record<string, unknown> }) => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const entry = payload.new as TimeEntry;
+            const entry = payload.new as unknown as TimeEntry;
             if (entry.date === dateKey) {
               setEntry(entry);
             }
           }
           if (payload.eventType === 'DELETE') {
-            const entry = payload.old as TimeEntry;
+            const entry = payload.old as unknown as TimeEntry;
             if (entry.date === dateKey) {
               removeEntry(entry.date, entry.hour);
             }
@@ -126,24 +112,24 @@ export function useSupabaseSync() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, selectedDate, setEntry, removeEntry]);
+  }, [user, selectedDate, setEntry, removeEntry]);
 }
 
 /**
  * Hook to save an entry to Supabase
  */
 export function useSaveEntry() {
-  const { userId } = useAppStore();
+  const { user } = useAuth();
 
   return useCallback(async (entry: Omit<TimeEntry, 'id' | 'created_at' | 'updated_at'>) => {
-    if (!userId) return null;
+    if (!user) return null;
 
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('time_entries')
       .upsert({
         ...entry,
-        user_id: userId,
+        user_id: user.id,
       }, {
         onConflict: 'user_id,date,hour',
       })
@@ -156,23 +142,23 @@ export function useSaveEntry() {
     }
 
     return data as TimeEntry;
-  }, [userId]);
+  }, [user]);
 }
 
 /**
  * Hook to delete an entry from Supabase
  */
 export function useDeleteEntry() {
-  const { userId } = useAppStore();
+  const { user } = useAuth();
 
   return useCallback(async (date: string, hour: number) => {
-    if (!userId) return false;
+    if (!user) return false;
 
     const supabase = getSupabaseClient();
     const { error } = await supabase
       .from('time_entries')
       .delete()
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .eq('date', date)
       .eq('hour', hour);
 
@@ -182,5 +168,5 @@ export function useDeleteEntry() {
     }
 
     return true;
-  }, [userId]);
+  }, [user]);
 }

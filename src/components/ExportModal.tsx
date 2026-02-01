@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { X, Download, FileText, FileJson, FileSpreadsheet } from 'lucide-react';
 import { exportUserData } from '@/lib/export';
+import { useAuth } from './AuthProvider';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -10,17 +11,20 @@ interface ExportModalProps {
 }
 
 export function ExportModal({ isOpen, onClose }: ExportModalProps) {
+  const { user } = useAuth();
   const [exporting, setExporting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleExport = async (format: 'csv' | 'json' | 'xlsx') => {
+    if (!user) return;
+
     setExporting(format);
     setError(null);
 
     try {
-      await exportUserData(format);
+      await exportUserData(format, user.id);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Export failed');

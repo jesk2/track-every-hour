@@ -23,6 +23,7 @@ import type { Category, ViewType } from '@/types';
 import { HelpModal } from './HelpModal';
 import { AuthModal } from './AuthModal';
 import { useAuth } from './AuthProvider';
+import { useSupabaseSync, useSaveEntry, useDeleteEntry } from '@/hooks/useSupabaseSync';
 
 export function SpreadsheetView() {
   const {
@@ -35,6 +36,11 @@ export function SpreadsheetView() {
   } = useAppStore();
 
   const { user, signOut, loading: authLoading } = useAuth();
+
+  // Sync with Supabase when logged in
+  useSupabaseSync();
+  const saveEntry = useSaveEntry();
+  const deleteEntry = useDeleteEntry();
 
   const [view, setView] = useState<ViewType>('week');
   const [selectedCell, setSelectedCell] = useState<{ date: string; hour: number } | null>(null);
@@ -86,19 +92,29 @@ export function SpreadsheetView() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [selectedCell, showCategoryPicker, categories]);
 
-  const handleCellClick = (date: string, hour: number) => {
+  const handleCellClick = async (date: string, hour: number) => {
     if (selectedCategory) {
       // Fill the cell with selected category
-      setEntry({
-        id: 'local-' + Date.now(),
-        user_id: 'local',
+      const entry = {
         category_id: selectedCategory.id,
         date,
         hour,
+        category: selectedCategory,
+      };
+
+      // Update local state immediately
+      setEntry({
+        id: 'temp-' + Date.now(),
+        user_id: user?.id || 'local',
+        ...entry,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        category: selectedCategory,
       });
+
+      // Save to Supabase if logged in
+      if (user) {
+        await saveEntry({ ...entry, user_id: user.id });
+      }
     } else {
       // Open category picker
       setSelectedDate(parseISO(date));
@@ -107,28 +123,46 @@ export function SpreadsheetView() {
     }
   };
 
-  const handleCategorySelect = (category: Category) => {
+  const handleCategorySelect = async (category: Category) => {
     if (!selectedCell) return;
 
-    setEntry({
-      id: 'local-' + Date.now(),
-      user_id: 'local',
+    const entry = {
       category_id: category.id,
       date: selectedCell.date,
       hour: selectedCell.hour,
+      category: category,
+    };
+
+    // Update local state immediately
+    setEntry({
+      id: 'temp-' + Date.now(),
+      user_id: user?.id || 'local',
+      ...entry,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      category: category,
     });
+
+    // Save to Supabase if logged in
+    if (user) {
+      await saveEntry({ ...entry, user_id: user.id });
+    }
 
     setSelectedCategory(category); // Keep category selected for painting
     setShowCategoryPicker(false);
     setSelectedCell(null);
   };
 
-  const handleClearCell = () => {
+  const handleClearCell = async () => {
     if (!selectedCell) return;
+
+    // Update local state immediately
     removeEntry(selectedCell.date, selectedCell.hour);
+
+    // Delete from Supabase if logged in
+    if (user) {
+      await deleteEntry(selectedCell.date, selectedCell.hour);
+    }
+
     setShowCategoryPicker(false);
     setSelectedCell(null);
   };
@@ -315,7 +349,7 @@ export function SpreadsheetView() {
                 <div className="hidden sm:flex items-center gap-1">
                   <span className="text-xs text-green-600 font-medium">✓ Saved</span>
                   <span className="text-xs text-gray-500 max-w-[80px] truncate">
-                    {user.email}
+                    {user.username}
                   </span>
                 </div>
                 <button
@@ -564,7 +598,7 @@ export function SpreadsheetView() {
                 <select
                   value={exportYear}
                   onChange={(e) => setExportYear(parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                 >
                   {Array.from({ length: 5 }, (_, i) => {
                     const year = new Date().getFullYear() - 2 + i;
