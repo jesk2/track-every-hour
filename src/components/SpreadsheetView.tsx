@@ -55,7 +55,33 @@ export function SpreadsheetView() {
     const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     return localTz || 'America/New_York';
   });
+  const [pendingOverride, setPendingOverride] = useState<{ date: string; hour: number; existingCategory: Category } | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+
+  // 12 distinct colors for hours (repeats for AM/PM)
+  const hourColors = [
+    '#1e3a5f', // 12am/12pm - midnight blue
+    '#2d4a6f', // 1
+    '#3d5a7f', // 2
+    '#4a6a8f', // 3
+    '#5a7a9f', // 4
+    '#6a8aaf', // 5
+    '#f59e0b', // 6 - sunrise orange
+    '#fbbf24', // 7
+    '#fcd34d', // 8
+    '#10b981', // 9 - morning green
+    '#34d399', // 10
+    '#6ee7b7', // 11
+  ];
+
+  const getHourColor = (hour: number) => hourColors[hour % 12];
+  const getHourBgColor = (hour: number) => {
+    // Subtle background colors for rows based on time of day
+    if (hour >= 0 && hour < 6) return 'rgba(30, 58, 95, 0.08)'; // night - dark blue tint
+    if (hour >= 6 && hour < 12) return 'rgba(251, 191, 36, 0.08)'; // morning - yellow tint
+    if (hour >= 12 && hour < 18) return 'rgba(16, 185, 129, 0.08)'; // afternoon - green tint
+    return 'rgba(139, 92, 246, 0.08)'; // evening - purple tint
+  };
 
   // Get dates based on view
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 0 });
@@ -98,7 +124,16 @@ export function SpreadsheetView() {
   }, [selectedCell, showCategoryPicker, categories]);
 
   const handleCellClick = async (date: string, hour: number) => {
+    const existingEntry = entries[`${date}-${hour}`];
+    const existingCategory = existingEntry?.category || categories.find(c => c.id === existingEntry?.category_id);
+
     if (selectedCategory) {
+      // Check if cell already has a different category - require confirmation
+      if (existingCategory && existingCategory.id !== selectedCategory.id) {
+        setPendingOverride({ date, hour, existingCategory });
+        return;
+      }
+
       // Fill the cell with selected category
       const entry = {
         category_id: selectedCategory.id,
@@ -126,6 +161,32 @@ export function SpreadsheetView() {
       setSelectedCell({ date, hour });
       setShowCategoryPicker(true);
     }
+  };
+
+  const confirmOverride = async () => {
+    if (!pendingOverride || !selectedCategory) return;
+
+    const { date, hour } = pendingOverride;
+    const entry = {
+      category_id: selectedCategory.id,
+      date,
+      hour,
+      category: selectedCategory,
+    };
+
+    setEntry({
+      id: 'temp-' + Date.now(),
+      user_id: user?.id || 'local',
+      ...entry,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    if (user) {
+      await saveEntry({ ...entry, user_id: user.id });
+    }
+
+    setPendingOverride(null);
   };
 
   const handleCategorySelect = async (category: Category) => {
@@ -486,12 +547,17 @@ export function SpreadsheetView() {
               <tbody>
                 {hours.map((hour) => {
                   const isCurrentHour = hour === getCurrentHour();
+                  const hourColor = getHourColor(hour);
+                  const rowBgColor = isCurrentHour ? 'rgba(234, 179, 8, 0.15)' : getHourBgColor(hour);
                   return (
                     <tr
                       key={hour}
-                      className={isCurrentHour ? 'bg-yellow-50/50' : ''}
+                      style={{ backgroundColor: rowBgColor }}
                     >
-                      <td className="w-14 p-0.5 text-[10px] font-medium text-gray-400 text-center border-r border-b border-gray-100">
+                      <td
+                        className="w-14 p-1 text-xs font-bold text-center border-r border-b border-gray-200"
+                        style={{ backgroundColor: hourColor, color: 'white' }}
+                      >
                         {formatHour(hour)}
                       </td>
                       {(view === 'day' ? [selectedDate] : weekDays).map((day) => {
@@ -677,6 +743,35 @@ export function SpreadsheetView() {
 
 
 
+
+      {/* Override Confirmation Modal */}
+      {pendingOverride && selectedCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-bold text-gray-900 mb-3">Replace Entry?</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              This cell already has <span className="font-semibold" style={{ color: pendingOverride.existingCategory.color }}>{pendingOverride.existingCategory.name}</span>.
+              <br />
+              Replace with <span className="font-semibold" style={{ color: selectedCategory.color }}>{selectedCategory.name}</span>?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPendingOverride(null)}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmOverride}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors"
+                style={{ backgroundColor: selectedCategory.color }}
+              >
+                Replace
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Help Modal */}
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />

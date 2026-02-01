@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { useAppStore } from '@/stores/useAppStore';
 import { useAuth } from '@/components/AuthProvider';
 import { formatDateKey } from '@/lib/date';
+import { startOfMonth, endOfMonth, subMonths, addMonths, format } from 'date-fns';
 import type { Category, TimeEntry } from '@/types';
 
 /**
@@ -15,12 +16,14 @@ export function useSupabaseSync() {
   const {
     setUserId,
     setCategories,
-    setEntriesForDate,
+    setEntriesBulk,
     setEntry,
     removeEntry,
     selectedDate,
     setLoading,
   } = useAppStore();
+
+  const lastLoadedMonth = useRef<string | null>(null);
 
   // Update store userId when auth changes
   useEffect(() => {
@@ -51,36 +54,45 @@ export function useSupabaseSync() {
     loadCategories();
   }, [user, setCategories]);
 
-  // Load entries when date or user changes
+  // Load entries for a 3-month range around the selected date
   useEffect(() => {
     if (!user) return;
+
+    const currentMonth = format(selectedDate, 'yyyy-MM');
+
+    // Only reload if we haven't loaded this month yet
+    if (lastLoadedMonth.current === currentMonth) return;
 
     const loadEntries = async () => {
       setLoading(true);
       const supabase = getSupabaseClient();
-      const dateKey = formatDateKey(selectedDate);
+
+      // Load 3 months of data (previous, current, next)
+      const startDate = format(startOfMonth(subMonths(selectedDate, 1)), 'yyyy-MM-dd');
+      const endDate = format(endOfMonth(addMonths(selectedDate, 1)), 'yyyy-MM-dd');
 
       const { data, error } = await supabase
         .from('time_entries')
         .select('*, category:categories(*)')
         .eq('user_id', user.id)
-        .eq('date', dateKey);
+        .gte('date', startDate)
+        .lte('date', endDate);
 
       if (!error && data) {
-        setEntriesForDate(dateKey, data as TimeEntry[]);
+        setEntriesBulk(data as TimeEntry[]);
+        lastLoadedMonth.current = currentMonth;
       }
       setLoading(false);
     };
 
     loadEntries();
-  }, [user, selectedDate, setEntriesForDate, setLoading]);
+  }, [user, selectedDate, setEntriesBulk, setLoading]);
 
-  // Real-time subscription for entries
+  // Real-time subscription for entries (all user entries, not filtered by date)
   useEffect(() => {
     if (!user) return;
 
     const supabase = getSupabaseClient();
-    const dateKey = formatDateKey(selectedDate);
 
     const channel = supabase
       .channel('entries-changes')
@@ -95,15 +107,11 @@ export function useSupabaseSync() {
         (payload: { eventType: string; new: Record<string, unknown>; old: Record<string, unknown> }) => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const entry = payload.new as unknown as TimeEntry;
-            if (entry.date === dateKey) {
-              setEntry(entry);
-            }
+            setEntry(entry);
           }
           if (payload.eventType === 'DELETE') {
             const entry = payload.old as unknown as TimeEntry;
-            if (entry.date === dateKey) {
-              removeEntry(entry.date, entry.hour);
-            }
+            removeEntry(entry.date, entry.hour);
           }
         }
       )
@@ -112,7 +120,7 @@ export function useSupabaseSync() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, selectedDate, setEntry, removeEntry]);
+  }, [user, setEntry, removeEntry]);
 }
 
 /**
@@ -125,15 +133,21 @@ export function useSaveEntry() {
     if (!user) return null;
 
     const supabase = getSupabaseClient();
+
+    // Only include actual database columns, not joined fields like 'category'
     const { data, error } = await supabase
       .from('time_entries')
       .upsert({
-        ...entry,
         user_id: user.id,
+        category_id: entry.category_id,
+        date: entry.date,
+        hour: entry.hour,
+        notes: entry.notes || null,
+        custom_label: entry.custom_label || null,
       }, {
         onConflict: 'user_id,date,hour',
       })
-      .select()
+      .select('*, category:categories(*)')
       .single();
 
     if (error) {

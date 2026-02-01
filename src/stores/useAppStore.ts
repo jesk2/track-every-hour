@@ -19,6 +19,7 @@ interface AppState {
   entries: Record<string, TimeEntry>;
   setEntry: (entry: TimeEntry) => void;
   setEntriesForDate: (date: string, entries: TimeEntry[]) => void;
+  setEntriesBulk: (entries: TimeEntry[]) => void;
   removeEntry: (date: string, hour: number) => void;
   getEntry: (date: string, hour: number) => TimeEntry | undefined;
 
@@ -78,6 +79,14 @@ export const useAppStore = create<AppState>()(
             }
           });
           // Add new entries
+          entries.forEach(entry => {
+            const key = entryKey(entry.date, entry.hour);
+            newEntries[key] = entry;
+          });
+          return { entries: newEntries };
+        }),
+        setEntriesBulk: (entries) => set((state) => {
+          const newEntries = { ...state.entries };
           entries.forEach(entry => {
             const key = entryKey(entry.date, entry.hour);
             newEntries[key] = entry;
