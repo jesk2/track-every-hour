@@ -18,7 +18,7 @@ import {
   isSameMonth,
   parseISO,
 } from 'date-fns';
-import { X, HelpCircle, User, LogOut, Calendar, Download } from 'lucide-react';
+import { X, HelpCircle, User, LogOut, Calendar, Download, ChevronLeft, ChevronRight, Globe } from 'lucide-react';
 import type { Category, ViewType } from '@/types';
 import { HelpModal } from './HelpModal';
 import { AuthModal } from './AuthModal';
@@ -50,6 +50,11 @@ export function SpreadsheetView() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
   const [showExportOptions, setShowExportOptions] = useState(false);
+  const [timezone, setTimezone] = useState(() => {
+    // Default to local timezone or ET
+    const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return localTz || 'America/New_York';
+  });
   const pickerRef = useRef<HTMLDivElement>(null);
 
   // Get dates based on view
@@ -321,6 +326,22 @@ export function SpreadsheetView() {
                   );
                 })}
               </select>
+              <div className="flex items-center gap-1 ml-2">
+                <Globe className="w-4 h-4 text-gray-400" />
+                <select
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className="font-medium text-gray-700 bg-transparent border border-gray-200 rounded-md px-2 py-1 text-sm outline-none cursor-pointer hover:border-gray-300 transition-colors"
+                >
+                  <option value="America/New_York">ET</option>
+                  <option value="America/Chicago">CT</option>
+                  <option value="America/Denver">MT</option>
+                  <option value="America/Los_Angeles">PT</option>
+                  <option value="America/Anchorage">AK</option>
+                  <option value="Pacific/Honolulu">HI</option>
+                  <option value="UTC">UTC</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -333,6 +354,30 @@ export function SpreadsheetView() {
               <Calendar className="w-4 h-4" />
               Today
             </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  if (view === 'day') setSelectedDate(subDays(selectedDate, 1));
+                  else if (view === 'week') setSelectedDate(subWeeks(selectedDate, 1));
+                  else setSelectedDate(subMonths(selectedDate, 1));
+                }}
+                className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                title={`Previous ${view}`}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => {
+                  if (view === 'day') setSelectedDate(addDays(selectedDate, 1));
+                  else if (view === 'week') setSelectedDate(addWeeks(selectedDate, 1));
+                  else setSelectedDate(addMonths(selectedDate, 1));
+                }}
+                className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                title={`Next ${view}`}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
             <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
               {(['day', 'week', 'month'] as ViewType[]).map((v) => (
                 <button
