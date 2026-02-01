@@ -40,7 +40,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         if (error) {
           setError(error.message);
         } else {
-          setSuccess('Check your email for a confirmation link!');
+          setSuccess('Account created successfully!');
         }
       }
     } catch (err) {
