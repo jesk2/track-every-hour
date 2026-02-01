@@ -3,6 +3,23 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Category colors */
+  --cat-work: #3B82F6;
+  --cat-sleep: #8B5CF6;
+  --cat-exercise: #10B981;
+  --cat-scrolling: #EF4444;
+  --cat-eating: #F59E0B;
+  --cat-commute: #6B7280;
+  --cat-learning: #06B6D4;
+  --cat-social: #EC4899;
+  --cat-selfcare: #84CC16;
+  --cat-other: #9CA3AF;
+
+  /* Productivity heatmap */
+  --heat-high: #22C55E;
+  --heat-medium: #EAB308;
+  --heat-low: #EF4444;
 }
 
 @theme inline {
@@ -10,6 +27,23 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Category colors */
+  --color-cat-work: var(--cat-work);
+  --color-cat-sleep: var(--cat-sleep);
+  --color-cat-exercise: var(--cat-exercise);
+  --color-cat-scrolling: var(--cat-scrolling);
+  --color-cat-eating: var(--cat-eating);
+  --color-cat-commute: var(--cat-commute);
+  --color-cat-learning: var(--cat-learning);
+  --color-cat-social: var(--cat-social);
+  --color-cat-selfcare: var(--cat-selfcare);
+  --color-cat-other: var(--cat-other);
+
+  /* Heatmap */
+  --color-heat-high: var(--heat-high);
+  --color-heat-medium: var(--heat-medium);
+  --color-heat-low: var(--heat-low);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -19,8 +53,56 @@
   }
 }
 
+html {
+  overscroll-behavior: none;
+  overflow: hidden;
+  height: 100%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+  overscroll-behavior: none;
+  overflow: hidden;
+  height: 100%;
+  position: fixed;
+  width: 100%;
+}
+
+/* Safe area padding for notched devices */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Hide scrollbar but allow scrolling */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Touch-friendly tap targets */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Prevent double-tap zoom */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Hide scrollbars */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
