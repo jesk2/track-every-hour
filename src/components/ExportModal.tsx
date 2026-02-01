@@ -67,10 +67,11 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
           <h2 className="text-xl font-bold text-gray-900">Export Your Data</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
             title="Close"
+            aria-label="Close export modal"
           >
-            <X className="w-5 h-5 text-gray-500 hover:text-gray-700" />
+            <X className="w-5 h-5 text-gray-600 hover:text-gray-800" />
           </button>
         </div>
 

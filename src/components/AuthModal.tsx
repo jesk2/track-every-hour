@@ -60,10 +60,11 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
             title="Close"
+            aria-label="Close modal"
           >
-            <X className="w-5 h-5 text-gray-500 hover:text-gray-700" />
+            <X className="w-5 h-5 text-gray-600 hover:text-gray-800" />
           </button>
         </div>
 
@@ -99,7 +100,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 "
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 text-gray-900"
                 placeholder="you@example.com"
               />
             </div>

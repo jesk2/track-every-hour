@@ -5,9 +5,11 @@ import { ChevronLeft, ChevronRight, Calendar, Download } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { formatDateDisplay, getNextDay, getPrevDay, isToday, getToday } from '@/lib/date';
 import { ExportModal } from '../ExportModal';
+import { useAuth } from '../AuthProvider';
 
 export function FloatingHeader() {
   const { selectedDate, setSelectedDate, categories } = useAppStore();
+  const { user } = useAuth();
   const isTodaySelected = isToday(selectedDate);
   const [showExportModal, setShowExportModal] = useState(false);
 
@@ -37,15 +39,17 @@ export function FloatingHeader() {
                   Today
                 </button>
               )}
-              <button
-                onClick={() => setShowExportModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors border border-gray-200"
-                title="Export your data"
-                aria-label="Export your data"
-              >
-                <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Export</span>
-              </button>
+              {user && (
+                <button
+                  onClick={() => setShowExportModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors border border-gray-200"
+                  title="Export your data"
+                  aria-label="Export your data"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">Export</span>
+                </button>
+              )}
             </div>
           </div>
 

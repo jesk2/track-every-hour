@@ -15,35 +15,16 @@ A mobile-first time tracking application built with Next.js, TypeScript, and Sup
 
 ## How to Use EveryHour
 
-### Getting Started
-1. **Sign In**: Click the user icon to sign in with your email
-2. **Choose View**: Switch between Day, Week, and Month views using the toggle buttons
-3. **Navigate Dates**: Use the calendar dropdown or arrow buttons to change dates
-
-### Logging Time
-
-#### Method 1: Quick Actions (Recommended)
-1. Click a category button in the Quick Actions bar at the top
-2. The category becomes selected (brighter appearance)
-3. Click any empty cell in the spreadsheet to fill it with that category
-4. Continue clicking cells to "paint" them with the selected category
-5. Click the same category again or another category to change selection
-
-#### Method 2: Cell Picker
-1. Click an empty cell in the spreadsheet
-2. A category picker modal appears
-3. Select a category to fill that cell
-4. The category stays selected, so you can continue clicking other cells to fill them
-
-### Editing Existing Entries
-- Click any filled cell to open the category picker and change its category
-- Use the Quick Actions bar to select a category, then click filled cells to overwrite them
+### Quick Start
+1. **Sign In** with your email
+2. **Click category buttons** in the top bar to select them
+3. **Click empty cells** in the spreadsheet to log time
+4. **Export your data** anytime using the Export button
 
 ### Tips
-- **Current Hour Highlighting**: The current hour row has a subtle yellow background
-- **Date Navigation**: Use the calendar dropdown for easy date jumping
-- **Mobile Gestures**: Swipe or tap to navigate between dates
-- **Bulk Editing**: Select a category once, then paint multiple cells quickly
+- Current hour is highlighted in yellow
+- Use arrow buttons or calendar to navigate dates
+- Mobile-friendly with touch gestures
 
 ## Tech Stack
 

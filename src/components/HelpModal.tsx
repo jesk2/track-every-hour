@@ -19,9 +19,11 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
           <h2 className="text-lg font-bold text-gray-900 ">How to Use EveryHour</h2>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 "
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Close"
+            aria-label="Close help"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-gray-500 hover:text-gray-700" />
           </button>
         </div>
 
