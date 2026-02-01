@@ -78,13 +78,13 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
         <form onSubmit={handleSubmit} className="px-4 pb-4 space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 ">
+            <div className="p-3 bg-red-50 text-red-800">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="p-3 bg-green-50 ">
+            <div className="p-3 bg-green-50 text-green-800">
               {success}
             </div>
           )}
