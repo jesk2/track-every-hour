@@ -100,7 +100,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 text-gray-900"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 text-black"
                 placeholder="you@example.com"
               />
             </div>
@@ -118,7 +118,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 text-gray-900"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 text-black"
                 placeholder="••••••••"
               />
             </div>
