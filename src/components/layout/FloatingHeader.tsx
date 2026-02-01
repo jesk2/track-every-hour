@@ -28,7 +28,7 @@ export function FloatingHeader() {
             <h1 className="text-lg font-semibold">
               {formatDateDisplay(selectedDate)}
             </h1>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               {!isTodaySelected && (
                 <button
                   onClick={() => setSelectedDate(getToday())}
@@ -39,11 +39,12 @@ export function FloatingHeader() {
               )}
               <button
                 onClick={() => setShowExportModal(true)}
-                className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Export data"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors border border-gray-200"
+                title="Export your data"
                 aria-label="Export your data"
               >
                 <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Export</span>
               </button>
             </div>
           </div>
